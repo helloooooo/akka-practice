@@ -1,8 +1,10 @@
+package practice
 import akka.actor.{Actor, ActorLogging, ActorRef,Props,Terminated}
 import DeviceGroup._
 import DeviceManager.RequestTrackDevice
 
-import scala.cocurrent.duration._
+import scala.concurrent.duration._
+
 
 
 object DeviceGroup {
@@ -13,20 +15,22 @@ object DeviceGroup {
 }
 class DeviceGroup(groupId:String) extends Actor with ActorLogging{
   var deviceIdToActor = Map.empty[String,ActorRef]
-  var actorToDeviceId = Map.empty[ActorRed,String]
+  var actorToDeviceId = Map.empty[ActorRef,String]
 
   override def preStart():Unit = log.info("DeviceGroup {} Start",groupId)
+
   override def postStop():Unit = log.info("DeviceGroup {} stopped",groupId)
-  override def receive: Receive ={
-    case trackMsg @ RequestTrackDevice(`groupId`,_) =>
+
+  override def receive: Receive = {
+    case trackMsg@RequestTrackDevice(`groupId`, _) =>
       deviceIdToActor.get(trackMsg.deviceId) match {
         case Some(deviceActor) =>
-          devieActor forward trackMsg
+          deviceActor forward trackMsg
         case None =>
-          log.info("creating device actor for {} " , trackMsg.deviceId)
-          val deviceActor = context.actoOf(Device.props(groupId,trackMsg.deviceId))
+          log.info("creating device actor for {} ", trackMsg.deviceId)
+          val deviceActor = context.actorOf(Device.props(groupId, trackMsg.deviceId))
           context.watch(deviceActor)
-          actorToDeviceId += devieActor -> trackMsg.deviceId
+          actorToDeviceId += deviceActor -> trackMsg.deviceId
           deviceIdToActor += trackMsg.deviceId -> deviceActor
           deviceActor forward trackMsg
       }
@@ -38,8 +42,9 @@ class DeviceGroup(groupId:String) extends Actor with ActorLogging{
     case RequestDeviceList(requestId) =>
       sender() ! ReplyDeviceList(requestId, deviceIdToActor.keySet)
     case Terminated(deviceActor) =>
-      val deviceid  = actorToDeviceId(deviceActor)
-      log.info("Device actor for {} has been terminated ".deviceid)
+      val deviceid = actorToDeviceId(deviceActor)
+      log.info("Device actor for {} has been terminated ", deviceid)
       actorToDeviceId -= deviceActor
       deviceIdToActor -= deviceid
+  }
 }

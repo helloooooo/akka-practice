@@ -1,3 +1,4 @@
+package practice
 import akka.actor.{Actor, ActorLogging, ActorRef,Props, Terminated}
 import DeviceManager.RequestTrackDevice
 
@@ -12,7 +13,9 @@ class DeviceManager extends Actor with ActorLogging{
   var actorToGroupId = Map.empty[ActorRef, String]
 
   override def preStart():Unit = log.info("DeviceManager start")
+
   override def postStop():Unit = log.info("DeviceManage stop")
+
   override def receive = {
     case trackMsg @ RequestTrackDevice(groupId,_) =>
       groupIdToActor.get(groupId) match {
@@ -22,6 +25,7 @@ class DeviceManager extends Actor with ActorLogging{
           log.info("Creating device group actor for {}",groupId)
           val groupActor = context.actorOf(DeviceGroup.props(groupId),"group-"+groupId)
           context.watch(groupActor)
+          groupActor forward trackMsg
           groupIdToActor += groupId -> groupActor
           actorToGroupId += groupActor -> groupId
       }
